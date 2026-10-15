@@ -127,6 +127,26 @@ A typical agent turn:
 5. The person runs `npm run approve -- chk_…`.
 6. `confirm_order` with `{ "checkout_id": "chk_…", "human_approved": true }`.
 
+## Attach in Grok Bot (MCP)
+
+Stdio, from a checkout of this repo. Do not wrap the process in `npm run start`. npm can write to stdout and break the MCP framing.
+
+```bash
+GROKSHOP_SHIPPING_MODE=stub \
+GROKSHOP_PAYMENTS_MODE=stub \
+GROKSHOP_CATALOG_PATH=data/harbor-hex.sample.json \
+GROKSHOP_DATA_DIR=.grokshop \
+node --import tsx src/index.ts
+```
+
+`GROKSHOP_CATALOG_PATH` is the bundled Harbor & Hex (SAMPLE) feed. Those SKUs are fictional examples. They are not a real offer, and GrokShop is not affiliated with any hardware brand.
+
+The same command and environment are in [`examples/mcp-client.json`](examples/mcp-client.json). Set `cwd` to the absolute path of this repo.
+
+There is no approve tool. The agent cannot approve its own checkout. A person records approval outside the agent with `npm run approve -- chk_…` or `POST /checkouts/:id/approve`. Only then does `confirm_order` accept `human_approved: true`.
+
+The 60–90 second recording script is [DEMO.md](DEMO.md).
+
 ## Merchant onboarding
 
 Point `GROKSHOP_CATALOG_PATH` at your feed. That file is the base quantity. Confirmed orders are stored as an overlay in the data directory, not written back to the feed. See [Inventory](#inventory).
@@ -215,7 +235,7 @@ npm run start:http
 | Script | |
 | --- | --- |
 | `npm test` | Catalog, shipping, checkout, MCP, and HTTP tests. |
-| `npm run demo` | End-to-end transcript. |
+| `npm run demo` | End-to-end transcript. Narration for a recording is in [DEMO.md](DEMO.md). |
 | `npm start` | MCP server on stdio. Prefer the `node --import tsx` form from a client. |
 | `npm run start:http` | Local HTTP mirror. |
 | `npm run approve -- chk_…` | Record human approval. |
