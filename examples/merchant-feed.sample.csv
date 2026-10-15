@@ -1,0 +1,4 @@
+# merchant: Harbor & Hex (SAMPLE)
+sku,name,description,price_cents,currency,weight_oz,inventory,category,sample,example
+SAMPLE-CBL-01,Harbor USB-C Cable,"SAMPLE / EXAMPLE. 2 m cable, fictional.",1800,usd,3,120,cable,true,true
+SAMPLE-SW-01,Hex Linear Switches,SAMPLE / EXAMPLE. Out of stock switches.,5200,usd,8,0,switches,true,true

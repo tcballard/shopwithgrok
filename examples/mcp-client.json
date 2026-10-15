@@ -1,0 +1,16 @@
+{
+  "mcpServers": {
+    "grokshop": {
+      "command": "node",
+      "args": ["--import", "tsx", "src/index.ts"],
+      "cwd": "/absolute/path/to/shopwithgrok",
+      "env": {
+        "GROKSHOP_SHIPPING_MODE": "stub",
+        "GROKSHOP_PAYMENTS_MODE": "stub",
+        "GROKSHOP_CATALOG_PATH": "data/harbor-hex.sample.json",
+        "GROKSHOP_DATA_DIR": ".grokshop",
+        "GROKSHOP_APPROVAL_SECRET": "replace-with-a-long-random-local-secret"
+      }
+    }
+  }
+}

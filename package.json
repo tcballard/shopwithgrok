@@ -1,0 +1,36 @@
+{
+  "name": "grokshop",
+  "version": "0.1.0",
+  "description": "Merchant MCP kit: inventory, stub shipping quotes, and human-approved checkout for AI agents. No live charges.",
+  "type": "module",
+  "license": "MIT",
+  "engines": {
+    "node": ">=20"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/tcballard/shopwithgrok"
+  },
+  "bin": {
+    "grokshop-mcp": "./dist/index.js",
+    "grokshop-http": "./dist/http.js"
+  },
+  "scripts": {
+    "start": "tsx src/index.ts",
+    "start:http": "tsx src/http.ts",
+    "build": "tsc -p tsconfig.json",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test": "node --import tsx --test test/*.test.ts",
+    "approve": "tsx src/approve.ts",
+    "demo": "tsx src/demo.ts"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "1.32.1",
+    "zod": "3.25.76"
+  },
+  "devDependencies": {
+    "@types/node": "^22.15.30",
+    "tsx": "^4.20.5",
+    "typescript": "^5.9.2"
+  }
+}

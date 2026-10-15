@@ -1,0 +1,107 @@
+{
+  "merchant": {
+    "id": "harbor-hex-sample",
+    "name": "Harbor & Hex (SAMPLE)",
+    "sample": true,
+    "example": true,
+    "disclaimer": "Fictional sample merchant for the GrokShop kit. Not a real store. Not affiliated with Omarchy or any hardware brand. Do not ship or charge against these SKUs."
+  },
+  "products": [
+    {
+      "sku": "SAMPLE-KB-01",
+      "name": "Harbor Hex Keyboard Kit",
+      "description": "SAMPLE / EXAMPLE. 75% hot-swap mechanical keyboard kit with an aluminum case. Barebones: switches and keycaps are not included. Fictional product.",
+      "price_cents": 18900,
+      "currency": "usd",
+      "weight_oz": 42,
+      "inventory": 14,
+      "category": "keyboard",
+      "sample": true,
+      "example": true
+    },
+    {
+      "sku": "SAMPLE-DOCK-01",
+      "name": "Harbor USB-C Dock",
+      "description": "SAMPLE / EXAMPLE. Desktop USB-C dock with HDMI, dual USB-A, and passthrough charging. Fictional spec.",
+      "price_cents": 7900,
+      "currency": "usd",
+      "weight_oz": 12,
+      "inventory": 30,
+      "category": "dock",
+      "sample": true,
+      "example": true
+    },
+    {
+      "sku": "SAMPLE-MPC-01",
+      "name": "Hex Mini PC",
+      "description": "SAMPLE / EXAMPLE. Compact mini PC placeholder for a Linux desk. No real hardware is sold.",
+      "price_cents": 54900,
+      "currency": "usd",
+      "weight_oz": 28,
+      "inventory": 6,
+      "category": "computer",
+      "sample": true,
+      "example": true
+    },
+    {
+      "sku": "SAMPLE-MAT-01",
+      "name": "Harbor Desk Mat",
+      "description": "SAMPLE / EXAMPLE. Desk mat, 36 by 18 inches, fictional colorway. Not a real textile.",
+      "price_cents": 4500,
+      "currency": "usd",
+      "weight_oz": 24,
+      "inventory": 40,
+      "category": "desk",
+      "sample": true,
+      "example": true
+    },
+    {
+      "sku": "SAMPLE-ARM-01",
+      "name": "Hex Monitor Arm",
+      "description": "SAMPLE / EXAMPLE. Single monitor arm, clamp mount. Fictional load rating.",
+      "price_cents": 9900,
+      "currency": "usd",
+      "weight_oz": 80,
+      "inventory": 11,
+      "category": "desk",
+      "sample": true,
+      "example": true
+    },
+    {
+      "sku": "SAMPLE-CBL-01",
+      "name": "Harbor USB-C Cable",
+      "description": "SAMPLE / EXAMPLE. 2 m USB-C cable. Fictional power marking. Not a certified product.",
+      "price_cents": 1800,
+      "currency": "usd",
+      "weight_oz": 3,
+      "inventory": 120,
+      "category": "cable",
+      "sample": true,
+      "example": true
+    },
+    {
+      "sku": "SAMPLE-SW-01",
+      "name": "Hex Linear Switches",
+      "description": "SAMPLE / EXAMPLE. 90-pack linear mechanical switches. Out of stock in this sample feed.",
+      "price_cents": 5200,
+      "currency": "usd",
+      "weight_oz": 8,
+      "inventory": 0,
+      "category": "switches",
+      "sample": true,
+      "example": true
+    },
+    {
+      "sku": "SAMPLE-STAND-01",
+      "name": "Harbor Laptop Stand",
+      "description": "SAMPLE / EXAMPLE. Aluminum laptop stand for a raised typing position. Fictional product.",
+      "price_cents": 6400,
+      "currency": "usd",
+      "weight_oz": 36,
+      "inventory": 18,
+      "category": "desk",
+      "sample": true,
+      "example": true
+    }
+  ]
+}
