@@ -2,9 +2,11 @@
 
 GrokShop is merchant infrastructure for AI agents. It is not a storefront and not an affiliate catalog.
 
-A merchant points the kit at their own JSON or CSV product feed. Agents then use MCP (or a local HTTP mirror) to search inventory, ask for stub shipping rates, and prepare a checkout. A person approves that checkout outside the agent. Only then can `confirm_order` record an order. v1 does not charge cards and does not buy shipping labels.
+A merchant points the kit at their own JSON or CSV product feed. Agents then use MCP (or a local HTTP mirror) to search inventory, ask for stub shipping rates, and prepare a checkout. A person approves that checkout outside the agent. Only then can `confirm_order` record an order. Nothing charges a card or buys a shipping label.
 
-Harbor & Hex (SAMPLE) is a fictional catalog bundled so you can run the flow locally. Those SKUs are examples. They are not real products, and GrokShop is not affiliated with Omarchy or any hardware brand.
+The hosted server is the lead-magnet path: signup creates an account, the account gets an API key, and Cursor connects to `https://YOUR_HOST/mcp` with `Authorization: Bearer <key>`. The free tier is the sample catalog only, 50 tool calls a day, and 5 checkouts a day. Marketplace submission and domain purchase are not part of this repo. See [docs/deploy.md](docs/deploy.md) and [cursor-plugin/README.md](cursor-plugin/README.md).
+
+Harbor & Hex (SAMPLE) is a fictional catalog bundled so you can run the flow locally and so the hosted free tier has something to sell. Those SKUs are examples. They are not real products, and GrokShop is not affiliated with Omarchy or any hardware brand.
 
 ## What an agent can call
 
@@ -149,7 +151,9 @@ The 60–90 second recording script is [DEMO.md](DEMO.md).
 
 ## Merchant onboarding
 
-Point `GROKSHOP_CATALOG_PATH` at your feed. That file is the base quantity. Confirmed orders are stored as an overlay in the data directory, not written back to the feed. See [Inventory](#inventory).
+Point `GROKSHOP_CATALOG_PATH` at your feed on the local stdio server. That file is the base quantity. Confirmed orders are stored as an `inventory_sold` overlay in the data directory, not written back to the feed. See [Inventory](#inventory).
+
+The hosted free tier does not read `GROKSHOP_CATALOG_PATH`. It always serves [`data/harbor-hex.sample.json`](data/harbor-hex.sample.json).
 
 ### JSON
 
@@ -228,7 +232,11 @@ npm run start:http
 | `GROKSHOP_HTTP_PORT` | `39217` | |
 | `GROKSHOP_CATALOG_PATH` | `data/harbor-hex.sample.json` | |
 | `GROKSHOP_MERCHANT_NAME` | `Merchant` | CSV fallback. |
-| `GROKSHOP_DATA_DIR` | `./.grokshop` | Checkouts, quoted rates, and the `inventory_sold` overlay. |
+| `GROKSHOP_DATA_DIR` | `./.grokshop` | Checkouts, quoted rates, the `inventory_sold` overlay, and (hosted) accounts. |
+| `GROKSHOP_PUBLIC_URL` | `https://YOUR_HOST` | Origin printed by the hosted server. Not a purchased domain. |
+| `PORT` | `8080` on the hosted server | Railway sets this. When it is set, the hosted server binds `0.0.0.0` unless `GROKSHOP_HTTP_HOST` is set. |
+| `GROKSHOP_FREE_TOOL_CALLS_PER_DAY` | `50` | Hosted free tier only. |
+| `GROKSHOP_FREE_CHECKOUTS_PER_DAY` | `5` | Hosted free tier only. Successful `create_checkout` calls. |
 
 ## Scripts
 
@@ -238,11 +246,44 @@ npm run start:http
 | `npm run demo` | End-to-end transcript. Narration for a recording is in [DEMO.md](DEMO.md). |
 | `npm start` | MCP server on stdio. Prefer the `node --import tsx` form from a client. |
 | `npm run start:http` | Local HTTP mirror. |
-| `npm run approve -- chk_…` | Record human approval. |
+| `npm run start:remote` | Hosted signup + streamable HTTP MCP. |
+| `npm run approve -- chk_…` | Record human approval for the local data directory. |
 | `npm run build` | Compile to `dist/`. |
+
+## Hosted remote MCP
+
+```bash
+npm run start:remote
+```
+
+| Method | Path | Auth | |
+| --- | --- | --- | --- |
+| `GET` | `/` | | Signup and login page. |
+| `GET` | `/health` | | Stub modes, sample catalog, free-tier limits. |
+| `POST` | `/signup` | | `{ "email", "password" }` returns `api_key` once. Password is scrypt-hashed. |
+| `POST` | `/login` | | Checks the password and returns a new `api_key`. The previous key stops working. |
+| `GET` | `/me` | Bearer | Email, tier, and today's usage. |
+| `POST` / `GET` / `DELETE` | `/mcp` | Bearer | Streamable HTTP MCP. Same six tools. No approve tool. |
+| `GET` | `/checkouts/:id` | Bearer | That account's checkout only. |
+| `POST` | `/checkouts/:id/approve` | Bearer | Human approval for that account. Not an MCP tool. |
+
+No email is sent. The key is in the JSON or HTML response. To send it later, set `GROKSHOP_EMAIL_PROVIDER` to `resend` or `postmark` and put `RESEND_API_KEY` or `POSTMARK_SERVER_TOKEN` on the host. This build does not read those variables.
+
+A limit error is a tool result with `error.code` `upgrade_required`, including `details.limit`, `details.limit_value`, and `details.resets_at`. The message says paid plans are not available in this build.
+
+Deploy to Fly (`*.fly.dev`) or Railway with the Dockerfile. Steps and the one-command launches are in [docs/deploy.md](docs/deploy.md). The Cursor plugin is [cursor-plugin/](cursor-plugin/). Its marketplace description:
+
+> Lets your bot buy from independent stores and ship direct, with you approving every payment.
+
+[`examples/remote-mcp.json`](examples/remote-mcp.json) uses `https://YOUR_HOST/mcp` and `YOUR_API_KEY` on purpose.
 
 ## Out of scope
 
-Live domains, Stripe charges, Stripe Connect, carrier label purchase, Amazon or other retailer scraping, and any tool that buys without a person.
+Stripe charges, Stripe Connect, carrier label purchase, Amazon or other retailer scraping, and any tool that buys without a person.
+
+Also still open, and not done by this repo:
+
+- [ ] Tom buys a domain
+- [ ] Tom submits the Cursor plugin to the marketplace
 
 License: MIT. See [LICENSE](LICENSE).

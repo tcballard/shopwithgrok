@@ -1,0 +1,10 @@
+{
+  "mcpServers": {
+    "grokshop": {
+      "url": "https://YOUR_HOST/mcp",
+      "headers": {
+        "Authorization": "Bearer YOUR_API_KEY"
+      }
+    }
+  }
+}

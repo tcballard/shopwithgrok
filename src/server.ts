@@ -18,13 +18,15 @@ const INSTRUCTIONS = [
   "quote_shipping returns stub EasyPost-shaped rates (carrier, service, rate). It does not buy labels.",
   "create_checkout prepares a stub PaymentIntent in requires_action / grokshop_human_approval. It does not charge a card.",
   "confirm_order never auto-buys. It succeeds only when the argument human_approved is true AND a human approval was stored outside MCP.",
-  "There is no approve tool. A person runs `npm run approve -- chk_…` or POST /checkouts/:id/approve.",
+  "There is no approve tool. A person runs `npm run approve -- chk_…` or POST /checkouts/:id/approve with their own credential.",
+  "A successful confirm_order decrements on-hand inventory in the state file. The catalog feed file is not rewritten.",
+  "The hosted free tier serves only the Harbor & Hex SAMPLE catalog, allows 50 tool calls per day and 5 checkouts per day, and never charges a card.",
   "GROKSHOP_SHIPPING_MODE=live and GROKSHOP_PAYMENTS_MODE=stripe are refused.",
 ].join(" ");
 
 export function createGrokShopServer(ctx: ShopContext): McpServer {
   const server = new McpServer(
-    { name: "grokshop", version: "0.1.0" },
+    { name: "grokshop", version: "0.2.0" },
     { instructions: INSTRUCTIONS },
   );
 
@@ -102,7 +104,9 @@ export function createGrokShopServer(ctx: ShopContext): McpServer {
 
 async function run(name: Parameters<typeof callTool>[0], args: unknown, ctx: ShopContext) {
   try {
+    ctx.gate?.(name);
     const data = callTool(name, args, ctx);
+    if (name === "create_checkout") ctx.recordCheckout?.();
     return {
       content: [{ type: "text" as const, text: JSON.stringify(data, null, 2) }],
     };

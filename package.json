@@ -1,7 +1,7 @@
 {
   "name": "grokshop",
-  "version": "0.1.0",
-  "description": "Merchant MCP kit: inventory, stub shipping quotes, and human-approved checkout for AI agents. No live charges.",
+  "version": "0.2.0",
+  "description": "Merchant MCP kit: inventory, stub shipping quotes, and human-approved checkout for AI agents. Hosted free tier over streamable HTTP. No live charges.",
   "type": "module",
   "license": "MIT",
   "engines": {
@@ -13,11 +13,13 @@
   },
   "bin": {
     "grokshop-mcp": "./dist/index.js",
-    "grokshop-http": "./dist/http.js"
+    "grokshop-http": "./dist/http.js",
+    "grokshop-remote": "./dist/remote.js"
   },
   "scripts": {
     "start": "tsx src/index.ts",
     "start:http": "tsx src/http.ts",
+    "start:remote": "tsx src/remote.ts",
     "build": "tsc -p tsconfig.json",
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "test": "node --import tsx --test test/*.test.ts",

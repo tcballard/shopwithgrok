@@ -17,6 +17,17 @@ export type ShopContext = {
   approvalSecret: string;
   httpHost: string;
   httpPort: number;
+  /** Set on the hosted free tier. Local stdio leaves this unset and can use a merchant feed. */
+  tier?: "free";
+  /**
+   * Replaces the default "approve outside MCP" sentence. `{checkout_id}` is substituted.
+   * Hosted accounts point at POST /checkouts/:id/approve with the API key.
+   */
+  approvalHint?: string;
+  /** Hosted free-tier limiter. Throws before the tool runs. Local stdio does not set this. */
+  gate?: (name: string) => void;
+  /** Called after create_checkout succeeds, so failed attempts do not consume the checkout quota. */
+  recordCheckout?: () => void;
 };
 
 export function contextFromEnv(env: NodeJS.ProcessEnv = process.env): ShopContext {
