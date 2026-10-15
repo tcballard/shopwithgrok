@@ -1,4 +1,7 @@
 import assert from "node:assert/strict";
+import { mkdtempSync, readFileSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
+import path from "node:path";
 import test from "node:test";
 import { GrokShopError } from "../src/errors.js";
 import { runApprove } from "../src/approve.js";
@@ -7,6 +10,7 @@ import {
   approveCheckout,
   confirmOrder,
   createCheckout,
+  listInventory,
   quoteShipping,
 } from "../src/service.js";
 import { contextFromEnv } from "../src/context.js";
@@ -203,6 +207,66 @@ test("npm run approve records approval for a checkout id", () => {
   assert.equal(printed.human_approved, true);
   const confirmed = confirmOrder({ checkout_id: checkout.id, human_approved: true }, ctx);
   assert.equal(confirmed.status, "confirmed");
+});
+
+test("confirm_order decrements on-hand inventory in state and does not rewrite the feed", () => {
+  const dir = mkdtempSync(path.join(tmpdir(), "grokshop-sold-"));
+  const catalogPath = path.join(dir, "feed.json");
+  const raw = JSON.stringify({
+    merchant: {
+      id: "tiny-sample",
+      name: "Tiny (SAMPLE)",
+      sample: true,
+      example: true,
+      disclaimer: "SAMPLE / EXAMPLE",
+    },
+    products: [
+      {
+        sku: "SAMPLE-ONE",
+        name: "One",
+        description: "SAMPLE / EXAMPLE",
+        price_cents: 100,
+        currency: "usd",
+        weight_oz: 1,
+        inventory: 2,
+        category: "desk",
+        sample: true,
+        example: true,
+      },
+    ],
+  });
+  writeFileSync(catalogPath, raw);
+  const ctx = testContext({ catalogPath });
+  const quote = quoteShipping({ sku: "SAMPLE-ONE", quantity: 2, to_postal_code: "94107" }, ctx);
+  const rate = quote.rates[0];
+  assert.ok(rate);
+  const checkout = createCheckout(
+    { sku: "SAMPLE-ONE", quantity: 2, rate_id: rate.id, ship_to: sampleShipTo },
+    ctx,
+  );
+  approveCheckout(checkout.id, "cli", ctx);
+  const confirmed = confirmOrder({ checkout_id: checkout.id, human_approved: true }, ctx);
+  assert.equal(confirmed.charged, false);
+  const after = listInventory({ sku: "SAMPLE-ONE" }, ctx);
+  assert.equal(after.inventory[0]?.inventory, 0);
+  assert.equal(after.inventory[0]?.status, "out_of_stock");
+  assert.equal(readFileSync(catalogPath, "utf8"), raw);
+
+  const again = confirmOrder({ checkout_id: checkout.id, human_approved: true }, ctx);
+  assert.equal(again.order?.id, confirmed.order?.id);
+  assert.equal(listInventory({ sku: "SAMPLE-ONE" }, ctx).inventory[0]?.inventory, 0);
+
+  const nextQuote = quoteShipping({ sku: "SAMPLE-ONE", quantity: 1, to_postal_code: "94107" }, ctx);
+  const nextRate = nextQuote.rates[0];
+  assert.ok(nextRate);
+  assert.throws(
+    () =>
+      createCheckout(
+        { sku: "SAMPLE-ONE", quantity: 1, rate_id: nextRate.id, ship_to: sampleShipTo },
+        ctx,
+      ),
+    (err: unknown) => err instanceof GrokShopError && err.code === "out_of_stock",
+  );
 });
 
 function restore(name: string, value: string | undefined): void {

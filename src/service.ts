@@ -1,7 +1,9 @@
-import type { ShopContext } from "./context.js";
+import path from "node:path";
 import { effectiveInventory, findProduct, loadCatalog, withInventoryOverlay } from "./catalog.js";
+import { defaultCatalogPath, type ShopContext } from "./context.js";
 import { GrokShopError } from "./errors.js";
 import { newId } from "./ids.js";
+import { assertFreeTierCatalog } from "./limits.js";
 import { assertPaymentsStub, stubPaymentIntent } from "./payments.js";
 import {
   approveInput,
@@ -67,7 +69,7 @@ export function listInventory(raw: unknown, ctx: ShopContext) {
 export function quoteShipping(raw: unknown, ctx: ShopContext) {
   assertShippingStub(ctx);
   const input = quoteShippingInput.parse(raw ?? {});
-  const catalog = loadCatalog(ctx);
+  const catalog = loadShopCatalog(ctx);
   const quantity = input.quantity ?? 1;
   let product: Product | undefined;
   if (input.sku) product = findProduct(catalog, input.sku);
@@ -235,14 +237,11 @@ export function confirmOrder(raw: unknown, ctx: ShopContext): Checkout {
       );
     }
     if (!checkout.approval || checkout.human_approved !== true) {
-      throw new GrokShopError(
-        "approval_not_recorded",
-        `confirm_order refused: ${checkout.id} has no stored human approval. Approve outside MCP with \`npm run approve -- ${checkout.id}\` or POST /checkouts/${checkout.id}/approve. There is no approve tool.`,
-        403,
-      );
+      throw approvalNotRecorded(checkout.id, ctx);
     }
 
     const catalog = loadCatalog(ctx);
+    assertFreeTierCatalogAccess(ctx, catalog);
     commitSoldUnits(state, catalog, checkout.line_items);
 
     const confirmedAt = new Date().toISOString();
@@ -272,7 +271,26 @@ export function getCheckout(checkoutId: string, ctx: ShopContext): Checkout {
 }
 
 function loadShopCatalog(ctx: ShopContext) {
-  return withInventoryOverlay(loadCatalog(ctx), readState(ctx).inventory_sold);
+  const catalog = loadCatalog(ctx);
+  assertFreeTierCatalogAccess(ctx, catalog);
+  return withInventoryOverlay(catalog, readState(ctx).inventory_sold);
+}
+
+function assertFreeTierCatalogAccess(ctx: ShopContext, catalog: Catalog): void {
+  if (ctx.tier !== "free") return;
+  if (path.resolve(ctx.catalogPath) !== path.resolve(defaultCatalogPath)) {
+    throw new GrokShopError(
+      "upgrade_required",
+      "Free tier serves the bundled Harbor & Hex SAMPLE catalog only. Paid merchant feeds are not available in this build.",
+      402,
+      {
+        tier: "free",
+        limit: "catalog",
+        upgrade: "Paid plans are not available in this build.",
+      },
+    );
+  }
+  assertFreeTierCatalog(catalog);
 }
 
 function commitSoldUnits(state: ShopState, catalog: Catalog, lineItems: Checkout["line_items"]): void {
@@ -301,6 +319,13 @@ function commitSoldUnits(state: ShopState, catalog: Catalog, lineItems: Checkout
   for (const { sku, quantity } of additions) {
     state.inventory_sold[sku] = (state.inventory_sold[sku] ?? 0) + quantity;
   }
+}
+
+function approvalNotRecorded(checkoutId: string, ctx: ShopContext): GrokShopError {
+  const message = ctx.approvalHint
+    ? ctx.approvalHint.replaceAll("{checkout_id}", checkoutId)
+    : `confirm_order refused: ${checkoutId} has no stored human approval. Approve outside MCP with \`npm run approve -- ${checkoutId}\` or POST /checkouts/${checkoutId}/approve. There is no approve tool.`;
+  return new GrokShopError("approval_not_recorded", message, 403);
 }
 
 function requireCheckout(checkouts: Record<string, Checkout>, checkoutId: string): Checkout {

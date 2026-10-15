@@ -1,0 +1,27 @@
+{
+  "name": "grokshop",
+  "displayName": "GrokShop",
+  "version": "0.2.0",
+  "description": "Lets your bot buy from independent stores and ship direct, with you approving every payment.",
+  "author": {
+    "name": "Tom Ballard"
+  },
+  "publisher": "tcballard",
+  "homepage": "https://github.com/tcballard/shopwithgrok",
+  "repository": "https://github.com/tcballard/shopwithgrok",
+  "license": "MIT",
+  "keywords": ["shopping", "checkout", "shipping", "mcp"],
+  "category": "Productivity",
+  "tags": ["commerce", "sample-catalog"],
+  "variables": {
+    "type": "object",
+    "required": ["GROKSHOP_API_KEY"],
+    "properties": {
+      "GROKSHOP_API_KEY": {
+        "type": "string",
+        "title": "GrokShop API key",
+        "description": "Bearer key from POST /signup on the hosted GrokShop server. Not a Stripe key. The plugin does not store the value."
+      }
+    }
+  }
+}
