@@ -267,3 +267,21 @@ export function findProduct(catalog: Catalog, sku: string): Product {
   }
   return product;
 }
+
+/** Catalog quantity minus units already confirmed. Never negative. */
+export function effectiveInventory(catalogInventory: number, sold: number): number {
+  const available = catalogInventory - sold;
+  return available > 0 ? available : 0;
+}
+
+/** Return a catalog whose inventory fields reflect confirmed-order deductions. */
+export function withInventoryOverlay(catalog: Catalog, sold: Readonly<Record<string, number>>): Catalog {
+  return {
+    merchant: catalog.merchant,
+    products: catalog.products.map((product) => {
+      const inventory = effectiveInventory(product.inventory, sold[product.sku] ?? 0);
+      if (inventory === product.inventory) return product;
+      return { ...product, inventory };
+    }),
+  };
+}

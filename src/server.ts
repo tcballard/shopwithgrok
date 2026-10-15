@@ -14,7 +14,7 @@ import { callTool } from "./tools.js";
 const INSTRUCTIONS = [
   "GrokShop is merchant infrastructure for AI agents. It is not a storefront.",
   "The bundled Harbor & Hex catalog is SAMPLE / EXAMPLE fiction. Do not treat it as a real offer.",
-  "search_products, get_product, and list_inventory read the merchant feed.",
+  "search_products, get_product, and list_inventory read effective on-hand stock (catalog quantity minus confirmed orders).",
   "quote_shipping returns stub EasyPost-shaped rates (carrier, service, rate). It does not buy labels.",
   "create_checkout prepares a stub PaymentIntent in requires_action / grokshop_human_approval. It does not charge a card.",
   "confirm_order never auto-buys. It succeeds only when the argument human_approved is true AND a human approval was stored outside MCP.",
@@ -45,7 +45,8 @@ export function createGrokShopServer(ctx: ShopContext): McpServer {
   server.registerTool(
     "get_product",
     {
-      description: "Fetch one catalog product by SKU, including sample/example flags and inventory.",
+      description:
+        "Fetch one catalog product by SKU, including sample/example flags and effective inventory.",
       inputSchema: getProductInput.shape,
       annotations: readOnly,
     },
@@ -55,7 +56,8 @@ export function createGrokShopServer(ctx: ShopContext): McpServer {
   server.registerTool(
     "list_inventory",
     {
-      description: "List on-hand quantities from the catalog feed. Out-of-stock rows are included.",
+      description:
+        "List effective on-hand quantities (catalog inventory minus confirmed orders). Out-of-stock rows are included.",
       inputSchema: listInventoryInput.shape,
       annotations: readOnly,
     },
@@ -77,7 +79,7 @@ export function createGrokShopServer(ctx: ShopContext): McpServer {
     "create_checkout",
     {
       description:
-        "Create a checkout that requires human approval. Status is requires_action and next_action.type is grokshop_human_approval. The PaymentIntent is a stub (livemode false). No card is charged. Does not approve the checkout.",
+        "Create a checkout that requires human approval. Status is requires_action and next_action.type is grokshop_human_approval. The PaymentIntent is a stub (livemode false). No card is charged. Does not reserve inventory or approve the checkout.",
       inputSchema: createCheckoutInput.shape,
       annotations: writes,
     },
@@ -88,7 +90,7 @@ export function createGrokShopServer(ctx: ShopContext): McpServer {
     "confirm_order",
     {
       description:
-        "Confirm a checkout only after a human approval stored outside MCP. Requires human_approved true AND a prior `npm run approve -- chk_…` or POST /checkouts/:id/approve. There is no approve tool. Never auto-buys. Stub mode does not charge a card or buy a label.",
+        "Confirm a checkout only after a human approval stored outside MCP. Requires human_approved true AND a prior `npm run approve -- chk_…` or POST /checkouts/:id/approve. There is no approve tool. Never auto-buys. On success, decrements effective inventory once; a repeat confirm returns the existing order. Insufficient stock returns out_of_stock and does not confirm. Stub mode does not charge a card or buy a label.",
       inputSchema: confirmOrderInput.shape,
       annotations: writes,
     },
