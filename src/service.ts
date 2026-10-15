@@ -1,5 +1,5 @@
 import type { ShopContext } from "./context.js";
-import { findProduct, loadCatalog } from "./catalog.js";
+import { effectiveInventory, findProduct, loadCatalog, withInventoryOverlay } from "./catalog.js";
 import { GrokShopError } from "./errors.js";
 import { newId } from "./ids.js";
 import { assertPaymentsStub, stubPaymentIntent } from "./payments.js";
@@ -14,14 +14,14 @@ import {
 } from "./schemas.js";
 import { assertShippingStub, buildStubRates, dollarsToCents } from "./shipping.js";
 import { readState, updateState } from "./store.js";
-import type { Checkout, Product, ShippingRate, StoredRate } from "./types.js";
+import type { Catalog, Checkout, Product, ShippingRate, ShopState, StoredRate } from "./types.js";
 
 const NOT_CHARGED =
   "Stub confirmation only. No card was charged and no shipping label was purchased.";
 
 export function searchProducts(raw: unknown, ctx: ShopContext) {
   const input = searchProductsInput.parse(raw ?? {});
-  const catalog = loadCatalog(ctx);
+  const catalog = loadShopCatalog(ctx);
   const query = input.query?.trim().toLowerCase() ?? "";
   const limit = input.limit ?? 20;
   const products = catalog.products
@@ -42,13 +42,13 @@ export function searchProducts(raw: unknown, ctx: ShopContext) {
 
 export function getProduct(raw: unknown, ctx: ShopContext) {
   const input = getProductInput.parse(raw ?? {});
-  const catalog = loadCatalog(ctx);
+  const catalog = loadShopCatalog(ctx);
   return { merchant: catalog.merchant, product: findProduct(catalog, input.sku) };
 }
 
 export function listInventory(raw: unknown, ctx: ShopContext) {
   const input = listInventoryInput.parse(raw ?? {});
-  const catalog = loadCatalog(ctx);
+  const catalog = loadShopCatalog(ctx);
   const products = input.sku ? [findProduct(catalog, input.sku)] : catalog.products;
   return {
     merchant: catalog.merchant,
@@ -112,7 +112,7 @@ export function createCheckout(raw: unknown, ctx: ShopContext): Checkout {
   assertShippingStub(ctx);
   const input = createCheckoutInput.parse(raw ?? {});
   const quantity = input.quantity ?? 1;
-  const catalog = loadCatalog(ctx);
+  const catalog = loadShopCatalog(ctx);
   const product = findProduct(catalog, input.sku);
   if (product.inventory < quantity) {
     throw new GrokShopError(
@@ -242,6 +242,9 @@ export function confirmOrder(raw: unknown, ctx: ShopContext): Checkout {
       );
     }
 
+    const catalog = loadCatalog(ctx);
+    commitSoldUnits(state, catalog, checkout.line_items);
+
     const confirmedAt = new Date().toISOString();
     checkout.status = "confirmed";
     checkout.next_action = null;
@@ -266,6 +269,38 @@ export function confirmOrder(raw: unknown, ctx: ShopContext): Checkout {
 
 export function getCheckout(checkoutId: string, ctx: ShopContext): Checkout {
   return requireCheckout(readState(ctx).checkouts, checkoutId);
+}
+
+function loadShopCatalog(ctx: ShopContext) {
+  return withInventoryOverlay(loadCatalog(ctx), readState(ctx).inventory_sold);
+}
+
+function commitSoldUnits(state: ShopState, catalog: Catalog, lineItems: Checkout["line_items"]): void {
+  const requested = new Map<string, number>();
+  for (const item of lineItems) {
+    if (!Number.isInteger(item.quantity) || item.quantity < 1) {
+      throw new GrokShopError("validation_error", `${item.sku} quantity must be a positive integer`, 400);
+    }
+    requested.set(item.sku, (requested.get(item.sku) ?? 0) + item.quantity);
+  }
+
+  const additions: Array<{ sku: string; quantity: number }> = [];
+  for (const [sku, quantity] of requested) {
+    const product = findProduct(catalog, sku);
+    const available = effectiveInventory(product.inventory, state.inventory_sold[sku] ?? 0);
+    if (available < quantity) {
+      throw new GrokShopError(
+        "out_of_stock",
+        `${sku} has ${available} available, requested ${quantity}`,
+        409,
+      );
+    }
+    additions.push({ sku, quantity });
+  }
+
+  for (const { sku, quantity } of additions) {
+    state.inventory_sold[sku] = (state.inventory_sold[sku] ?? 0) + quantity;
+  }
 }
 
 function requireCheckout(checkouts: Record<string, Checkout>, checkoutId: string): Checkout {

@@ -120,4 +120,6 @@ export type ShopState = {
   version: 1;
   checkouts: Record<string, Checkout>;
   rates: Record<string, StoredRate>;
+  /** Units confirmed per SKU. Effective stock is catalog inventory minus this overlay. */
+  inventory_sold: Record<string, number>;
 };

@@ -12,10 +12,10 @@ Harbor & Hex (SAMPLE) is a fictional catalog bundled so you can run the flow loc
 | --- | --- |
 | `search_products` | Search the merchant feed. |
 | `get_product` | Fetch one SKU. |
-| `list_inventory` | On-hand counts, including out-of-stock rows. |
+| `list_inventory` | Effective on-hand counts, including out-of-stock rows. |
 | `quote_shipping` | Stub FedEx, UPS, and USPS rates shaped like an EasyPost `Rate` (`carrier`, `service`, `rate`). |
-| `create_checkout` | Prepare a checkout. Status is `requires_action`. `next_action.type` is `grokshop_human_approval`. |
-| `confirm_order` | Record the order only when `human_approved` is `true` **and** a stored approval already exists. |
+| `create_checkout` | Prepare a checkout. Status is `requires_action`. `next_action.type` is `grokshop_human_approval`. Does not reserve stock. |
+| `confirm_order` | Record the order only when `human_approved` is `true` **and** a stored approval already exists. Decrements effective inventory once. |
 
 There is no approve tool. Agents cannot approve their own checkout.
 
@@ -73,6 +73,18 @@ Calling `confirm_order` with `human_approved: true` before that approval is stor
 
 The confirmed PaymentIntent stub uses status `succeeded` so the object has a terminal shape. `livemode` stays `false`, `metadata.grokshop_charged` stays `"false"`, and the order `note` says no card was charged and no label was purchased.
 
+## Inventory
+
+`create_checkout` does not reserve stock. It rejects a quantity above the effective on-hand count, and two checkouts can still be opened for the last unit.
+
+Effective on-hand stock is the catalog file's `inventory` minus `inventory_sold` in `GROKSHOP_DATA_DIR/state.json`. `search_products`, `get_product`, `list_inventory`, and `create_checkout` all read that count. The catalog JSON or CSV is never rewritten.
+
+`confirm_order` checks stock again. A new confirm adds each line item's quantity to `inventory_sold` and writes the order in the same state update. Confirms for one data directory take `state.lock` in that directory, so two of them cannot both take the last unit. A lock left by a dead process is cleared on the next write. A repeat confirm of an already-confirmed checkout returns the stored order and does not decrement again.
+
+If effective stock is short, confirm returns `out_of_stock`. The checkout stays `requires_action`, and the PaymentIntent stub is not moved to `succeeded`.
+
+When the effective count hits 0, `list_inventory` reports `in_stock: false` and `status: "out_of_stock"`.
+
 ## Attach an MCP client
 
 Stdio is the agent interface. Do not wrap it in `npm run start`: npm can write to stdout and break the MCP framing. Use Node directly, and set `cwd` to this repo.
@@ -117,9 +129,7 @@ A typical agent turn:
 
 ## Merchant onboarding
 
-Point `GROKSHOP_CATALOG_PATH` at your feed. Quantities are read from the file on each call. v1 does not reserve stock and does not decrement inventory when an order is confirmed.
-
-Out-of-stock is still enforced: `create_checkout` rejects a quantity above `inventory`.
+Point `GROKSHOP_CATALOG_PATH` at your feed. That file is the base quantity. Confirmed orders are stored as an overlay in the data directory, not written back to the feed. See [Inventory](#inventory).
 
 ### JSON
 
@@ -198,7 +208,7 @@ npm run start:http
 | `GROKSHOP_HTTP_PORT` | `39217` | |
 | `GROKSHOP_CATALOG_PATH` | `data/harbor-hex.sample.json` | |
 | `GROKSHOP_MERCHANT_NAME` | `Merchant` | CSV fallback. |
-| `GROKSHOP_DATA_DIR` | `./.grokshop` | Checkouts and quoted rates. |
+| `GROKSHOP_DATA_DIR` | `./.grokshop` | Checkouts, quoted rates, and the `inventory_sold` overlay. |
 
 ## Scripts
 
