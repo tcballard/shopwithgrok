@@ -25,7 +25,7 @@ There is no approve tool. Agents cannot approve their own checkout.
 
 ## Run locally (about five minutes)
 
-Requires Node.js 20 or newer.
+Requires Node.js 22 or newer.
 
 ```bash
 git clone https://github.com/tcballard/shopwithgrok.git
